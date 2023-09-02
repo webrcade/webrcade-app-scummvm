@@ -12,6 +12,7 @@ import {
   PauseScreenButton,
   Resources,
   SettingsAppWhiteImage,
+  ListsWhiteImage,
   TEXT_IDS,
 } from '@webrcade/app-common';
 
@@ -25,16 +26,53 @@ export class EmulatorPauseScreen extends Component {
 
   ModeEnum = {
     PAUSE: 'pause',
-    SETTINGS: '2600-settings',
+    SETTINGS: 'settings',
     CONTROLS: 'controls',
   };
 
-  ADDITIONAL_BUTTON_REFS = [React.createRef(), React.createRef()];
+  ADDITIONAL_BUTTON_REFS = [React.createRef(), React.createRef(), React.createRef()];
 
   render() {
     const { ADDITIONAL_BUTTON_REFS, ModeEnum } = this;
     const { appProps, closeCallback, emulator, exitCallback, isEditor, isStandalone } = this.props;
     const { mode } = this.state;
+
+    const additionalButtons = [
+      <PauseScreenButton
+        imgSrc={GamepadWhiteImage}
+        buttonRef={ADDITIONAL_BUTTON_REFS[0]}
+        label={Resources.getText(TEXT_IDS.VIEW_CONTROLS)}
+        onHandlePad={(focusGrid, e) =>
+          focusGrid.moveFocus(e.type, ADDITIONAL_BUTTON_REFS[0])
+        }
+        onClick={() => {
+          this.setState({ mode: ModeEnum.CONTROLS });
+        }}
+      />,
+      <PauseScreenButton
+        imgSrc={SettingsAppWhiteImage}
+        buttonRef={ADDITIONAL_BUTTON_REFS[1]}
+        label="ScummVM Settings"
+        onHandlePad={(focusGrid, e) =>
+          focusGrid.moveFocus(e.type, ADDITIONAL_BUTTON_REFS[1])
+        }
+        onClick={() => {
+          this.setState({ mode: ModeEnum.SETTINGS });
+        }}
+      />,
+      <PauseScreenButton
+        imgSrc={ListsWhiteImage}
+        buttonRef={ADDITIONAL_BUTTON_REFS[2]}
+        label="ScummVM Menu"
+        onHandlePad={(focusGrid, e) =>
+          focusGrid.moveFocus(e.type, ADDITIONAL_BUTTON_REFS[2])
+        }
+        onClick={() => {
+          window.Module._emOpenScummMainMenuDialog();
+          closeCallback();
+        }}
+      />,
+    ];
 
     return (
       <>
@@ -46,30 +84,7 @@ export class EmulatorPauseScreen extends Component {
             isEditor={isEditor}
             isStandalone={isStandalone}
             additionalButtonRefs={ADDITIONAL_BUTTON_REFS}
-            additionalButtons={[
-              <PauseScreenButton
-                imgSrc={GamepadWhiteImage}
-                buttonRef={ADDITIONAL_BUTTON_REFS[0]}
-                label={Resources.getText(TEXT_IDS.VIEW_CONTROLS)}
-                onHandlePad={(focusGrid, e) =>
-                  focusGrid.moveFocus(e.type, ADDITIONAL_BUTTON_REFS[0])
-                }
-                onClick={() => {
-                  this.setState({ mode: ModeEnum.CONTROLS });
-                }}
-              />,
-              <PauseScreenButton
-                imgSrc={SettingsAppWhiteImage}
-                buttonRef={ADDITIONAL_BUTTON_REFS[1]}
-                label="ScummVM Settings"
-                onHandlePad={(focusGrid, e) =>
-                  focusGrid.moveFocus(e.type, ADDITIONAL_BUTTON_REFS[1])
-                }
-                onClick={() => {
-                  this.setState({ mode: ModeEnum.SETTINGS });
-                }}
-              />,
-            ]}
+            additionalButtons={additionalButtons}
           />
         ) : null}
         {mode === ModeEnum.CONTROLS ? (

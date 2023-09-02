@@ -11,6 +11,9 @@ import ScummvmFS from './scummvm_fs';
 
 export class Emulator extends AppWrapper {
 
+  SAVE_NAME = "sav";
+  SAVES_DIR = "/saves";
+
   constructor(app, debug = false) {
     super(app, debug);
     window.emulator = this;
@@ -29,8 +32,70 @@ export class Emulator extends AppWrapper {
   }
 
   createAudioProcessor() { return null; }
-  onArchiveFile(isDir, name, stats) {}
-  onArchiveFilesFinished() {}
+
+  onArchiveFile(isDir, name, stats) { }
+
+  onArchiveFilesFinished() { }
+
+  onPause(p) {
+    const Module = window.Module;
+    if (p) {
+      Module._emPause();
+    } else {
+      Module._emUnpause();
+    }
+  }
+
+  onGameNotFound() {
+    this.gameNotFound = true;
+  }
+
+  onShowMenu() {
+    if (this.pause(true)) {
+      this.showPauseMenu();
+    }
+  }
+
+  async onSaveGame(fileName) {
+    const { FS, Module } = window;
+
+    const path = this.SAVES_DIR + "/" + fileName;
+    for (let i = 0; i < 10; i++) {
+      const res = FS.analyzePath(path, true);
+      console.log(res);
+      if (res.exists) {
+        Module._emPause();
+        setTimeout(() => {
+          try {
+            this.saveState();
+          } finally {
+            Module._emUnpause();
+          }
+        }, 1000);
+        // Exit loop
+        return;
+      }
+      await this.wait(200);
+    }
+  }
+
+  onSaveScreenshot(path) {}
+
+  onExit() {
+    const { app } = this;
+    setTimeout(() => {
+      app.exit(this.gameNotFound ? "Unable to find a supported game." : null);
+    }, 0);
+  }
+
+  async onShowPauseMenu() {
+    console.log(window.FS.readdir("/saves"));
+    await this.saveState();
+  }
+
+  is3d() {
+    return false;
+  }
 
   loadEmscriptenModule(canvas) {
     const { app } = this;
@@ -47,40 +112,65 @@ export class Emulator extends AppWrapper {
         const FS = window.FS;
 
         window.addRunDependency("scummvm-fs-setup");
+        try {
+          app.setState({ loadingMessage: null, loadingPercent: null });
 
-        app.setState({ loadingMessage: null, loadingPercent: null });
+          setTimeout(() => {
+            app.setState({ loadingMessage: 'Preparing files' });
+          }, 0);
 
-        setTimeout(() => {
-          app.setState({ loadingMessage: 'Preparing files' });
-        }, 0);
+          await setupHTTPFilesystem("plugins");
+          await setupHTTPFilesystem("data");
 
-        await setupHTTPFilesystem("plugins");
-        await setupHTTPFilesystem("data");
+          if (this.bytes.byteLength === 0) {
+            throw new Error('The size is invalid (0 bytes).');
+          }
 
-        if (this.bytes.byteLength === 0) {
-          throw new Error('The size is invalid (0 bytes).');
+          // "gfx_mode=2x\n" +               // OpenGL opengl
+          // "gui_theme=scummmodern\n"
+
+          // Write init file for ScummVM
+          let contents = (
+            "[scummvm]\n" +
+            "pluginspath=/plugins\n" +      // Plugins path
+            "vkeybdpath=/data\n" +
+            "originalsaveload=true\n" +
+            "vkeybd_pack_name=vkeybd_default\n" +
+            "savepath=/saves\n" +
+            "enable_font_antialiasing=true\n" +
+            "themepath=/data/\n" +
+            "autosave_period=0\n"          // Disable auto save
+          )
+
+          if (this.is3d()) {
+            contents += "gfx_mode=opengl\n"; // OpenGL opengl
+          }
+
+          FS.writeFile("/scummvm.ini", contents);
+
+          // Extract the archive
+          await this.extractArchive(
+            FS, "/game", this.bytes, 10 * 1024 * 1024 * 1024, this
+          );
+
+          // TODO: Try not storing bytes?
+          this.bytes = null;
+
+          // Load the save state
+          FS.mkdir(this.SAVES_DIR);
+          this.saveStatePrefix = app.getStoragePath(`${this.uid}/`);
+          this.saveStatePath = `${this.saveStatePrefix}${this.SAVE_NAME}`;
+          await this.loadState();
+
+        } catch (e) {
+          app.setState({ loadingMessage: null, loadingPercent: null });
+          LOG.error(e);
+          app.exit(e);
+          return false;
         }
 
-        // Write init
-        const contents = (
-          "[scummvm]\n" +
-          "gfx_mode=opengl\n" +           // OpenGL
-          "pluginspath=/plugins\n" +      // Plugins path
-          "autosave_period=0\n" +         // Disable auto save
-          "vkeybdpath=/data\n" +
-          "vkeybd_pack_name=vkeybd_default\n"
-        )
-        FS.writeFile("/scummvm.ini", contents);
-
-        // Extract the archive
-        await this.extractArchive(
-          FS, "/game", this.bytes, 640 * 1024 * 1024, this
-        );
-
-        // TODO: Try not storing bytes?
-        this.bytes = null;
-
         window.removeRunDependency("scummvm-fs-setup");
+        return true;
       }
 
       window.Module = {
@@ -113,23 +203,82 @@ export class Emulator extends AppWrapper {
     });
   }
 
-  onPause(p) {
-    const Module = window.Module;
-    if (p) {
-      Module._emPause();
-    } else {
-      Module._emUnpause();
+  exit() {
+    try {
+      const Module = window.Module;
+      Module._emQuit();
+    } catch { }
+  }
+
+  async saveState() {
+    const { FS } = window;
+
+    try {
+      const saveName = `${this.SAVE_NAME}.zip`;
+      const files = [];
+      const currFiles = FS.readdir(this.SAVES_DIR);
+      for (let i = 0; i < currFiles.length; i++) {
+        const fileName = currFiles[i];
+        if (fileName === "." || fileName === ".." || fileName === "info.txt") {
+          continue;
+        }
+        try {
+          const path = this.SAVES_DIR + "/" + fileName;
+          const res = FS.analyzePath(path, true);
+          if (res.exists) {
+            const s = FS.readFile(path);
+            if (s) {
+              files.push({
+                name: fileName,
+                content: s,
+              });
+            }
+          }
+        } catch (e) {
+          LOG.error(e);
+        }
+      }
+
+      const hasChanges = await this.getSaveManager().checkFilesChanged(files);
+      if (hasChanges) {
+        await this.getSaveManager().save(
+          `${this.saveStatePrefix}${saveName}`,
+          files,
+          this.saveMessageCallback,
+        );
+      }
+    } catch (e) {
+      LOG.error('Error persisting save state: ' + e);
     }
   }
 
-  exit() {
-    const Module = window.Module;
-    console.log('exit!');
-    Module._emQuit();
-  }
+  async loadState() {
+    const { FS } = window;
 
-  async onShowPauseMenu() {
-    // await this.saveState();
+    try {
+      const saveName = `${this.SAVE_NAME}.zip`;
+
+      // Load from new save format
+      const files = await this.getSaveManager().load(
+        `${this.saveStatePrefix}${saveName}`,
+        this.loadMessageCallback,
+      );
+
+      // Cache file hashes
+      await this.getSaveManager().checkFilesChanged(files);
+
+      let s = null;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (f.name === 'info.txt') continue;
+        s = f.content;
+        if (s) {
+          FS.writeFile(this.SAVES_DIR + "/" + f.name, s);
+        }
+      }
+    } catch (e) {
+      LOG.error('Error loading save state: ' + e);
+    }
   }
 
   pollControls() {
@@ -147,6 +296,43 @@ export class Emulator extends AppWrapper {
     }
   }
 
+  updateBilinearFilter() {
+    const { Module } = window;
+    const enabled = this.isBilinearFilterEnabled();
+    Module._emSetFilterEnabled(enabled);
+  }
+
+
+  isForceAspectRatio() {
+    return this.getScreenSize() === this.SS_NATIVE;
+  }
+
+  isScreenFill() {
+    return this.getScreenSize() === this.SS_NATIVE;
+  }
+
+  getDefaultAspectRatio() {
+    return 1;
+  }
+
+  updateScreenSize() {
+    const { Module } = window;
+
+    try {
+      const enabled = this.isForceAspectRatio();
+      Module._emSetStretchMode(enabled ?
+        this.is3d() ? 3 : 4 :
+        this.is3d() ? 4 : 3);
+    } catch (e) {
+      LOG.info("Unable to invoke _emSetStretchMode.");
+    }
+
+    super.updateScreenSize();
+
+    this.startTime = Date.now();
+    this.forceResize();
+  }
+
   forceResize() {
     window.dispatchEvent(new Event('resize'));
     if ((Date.now() - this.startTime) < 10 * 1000) {
@@ -159,6 +345,8 @@ export class Emulator extends AppWrapper {
 
     this.startTime = Date.now();
     this.canvas = canvas;
+
+    window.addEventListener("contextmenu", e => e.preventDefault());
 
     try {
       // Hack to fix issue where screen is not sized correctly on initial load
@@ -186,11 +374,3 @@ export class Emulator extends AppWrapper {
   }
 }
 
-
-// wait(time) {
-//   return new Promise((resolve, reject) => {
-//     setTimeout(() => {
-//       resolve();
-//     }, time);
-//   });
-// }
