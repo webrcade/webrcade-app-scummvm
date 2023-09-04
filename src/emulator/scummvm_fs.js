@@ -171,9 +171,9 @@ console.log('download: ' + path);
         // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range
         var range_start = first_block * RANGE_REQUEST_BLOCK_SIZE
         var range_end = Math.min((last_block + 1) * RANGE_REQUEST_BLOCK_SIZE, this.fs_index[path].size) - 1
-        if (this.fs_index[path].size > (range_start - range_end + 1)) {
-            req.setRequestHeader('Range', 'bytes=' + range_start + '-' + range_end);
-        }
+        // if (this.fs_index[path].size > (range_start - range_end + 1)) {
+        //     req.setRequestHeader('Range', 'bytes=' + range_start + '-' + range_end);
+        // }
 
         if (this.fs_index[path].data === null) {
             this.fs_index[path].data = new Array(Math.ceil(this.fs_index[path].size / RANGE_REQUEST_BLOCK_SIZE));
