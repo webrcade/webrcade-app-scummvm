@@ -8,9 +8,10 @@
     position: absolute;
     width: 96vw;
     height: 96vh;
-    // cursor: none !important;
+    cursor: none !important;
     // max-width: calc(96vh * 1.333);
     // max-height: calc(96vw * 0.75);
     image-rendering: auto !important;
     // border: 1px solid red;
+    opacity: 0.0;
   }

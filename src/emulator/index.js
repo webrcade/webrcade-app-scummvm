@@ -18,6 +18,7 @@ export class Emulator extends AppWrapper {
     super(app, debug);
     window.emulator = this;
     this.bytes = null;
+    this.threed = false;
   }
 
   setArchive(uid, bytes) {
@@ -59,6 +60,9 @@ export class Emulator extends AppWrapper {
   async onSaveGame(fileName) {
     const { FS, Module } = window;
 
+    // Seems like a bug with Grim Fandango, keeps writing this file over and over
+    if (fileName === 'grimdialog.htm') return;
+
     const path = this.SAVES_DIR + "/" + fileName;
     for (let i = 0; i < 10; i++) {
       const res = FS.analyzePath(path, true);
@@ -93,8 +97,16 @@ export class Emulator extends AppWrapper {
     await this.saveState();
   }
 
+  set3d(val) {
+    console.log("### set3d: " + val);
+    this.threed = val;
+    setTimeout(() => {
+      this.updateScreenSize();
+    }, 1000);
+  }
+
   is3d() {
-    return false;
+    return this.threed;
   }
 
   loadEmscriptenModule(canvas) {
@@ -127,19 +139,22 @@ export class Emulator extends AppWrapper {
           }
 
           // "gfx_mode=2x\n" +               // OpenGL opengl
-          // "gui_theme=scummmodern\n"
 
           // Write init file for ScummVM
           let contents = (
             "[scummvm]\n" +
+            "aspect_ratio=true\n" +
+            "renderer=software\n" +
             "pluginspath=/plugins\n" +      // Plugins path
             "vkeybdpath=/data\n" +
             "originalsaveload=true\n" +
             "vkeybd_pack_name=vkeybd_default\n" +
             "savepath=/saves\n" +
-            "enable_font_antialiasing=true\n" +
             "themepath=/data/\n" +
-            "autosave_period=0\n"          // Disable auto save
+            // "gfx_mode=2x\n" +               // OpenGL opengl
+            // "monosize=22\n" +  // Text adventure text size (mono fonts)
+            // "propsize=18\n" +  // Standard fonts
+            "autosave_period=0\n"         // Disable auto save
           )
 
           if (this.is3d()) {
@@ -174,6 +189,9 @@ export class Emulator extends AppWrapper {
       }
 
       window.Module = {
+        onAbort: (e) => {
+          app.exit(e);
+        },
         preRun: [setupFilesystem],
         postRun: [],
         print: function (t) {
@@ -299,16 +317,17 @@ export class Emulator extends AppWrapper {
   updateBilinearFilter() {
     const { Module } = window;
     const enabled = this.isBilinearFilterEnabled();
-    Module._emSetFilterEnabled(enabled);
+    try {
+      Module._emSetFilterEnabled(enabled);
+    } catch {}
   }
-
 
   isForceAspectRatio() {
     return this.getScreenSize() === this.SS_NATIVE;
   }
 
   isScreenFill() {
-    return this.getScreenSize() === this.SS_NATIVE;
+    return this.isForceAspectRatio();
   }
 
   getDefaultAspectRatio() {
@@ -320,9 +339,11 @@ export class Emulator extends AppWrapper {
 
     try {
       const enabled = this.isForceAspectRatio();
-      Module._emSetStretchMode(enabled ?
-        this.is3d() ? 3 : 4 :
-        this.is3d() ? 4 : 3);
+      try {
+        Module._emSetStretchMode(enabled ?
+          this.is3d() ? 3 : 4 :
+          this.is3d() ? 4 : 3);
+        } catch {}
     } catch (e) {
       LOG.info("Unable to invoke _emSetStretchMode.");
     }
@@ -346,6 +367,7 @@ export class Emulator extends AppWrapper {
     this.startTime = Date.now();
     this.canvas = canvas;
 
+    // Prevent right click displaying menu
     window.addEventListener("contextmenu", e => e.preventDefault());
 
     try {

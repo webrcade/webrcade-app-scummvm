@@ -91,6 +91,14 @@ class App extends WebrcadeApp {
     }
   }
 
+  async exit(error, navigateBack = true) {
+    if (this.emulator && this.emulator.canvas && this.emulator.canvas.style) {
+      this.emulator.canvas.style.opacity = '0.0';
+    }
+
+    await super.exit(error, navigateBack);
+  }
+
   async onPreExit() {
     try {
       await super.onPreExit();
