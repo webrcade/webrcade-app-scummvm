@@ -12,11 +12,21 @@ import {
 
 import { Emulator } from "./emulator";
 import { EmulatorPauseScreen } from "./pause";
+import { TouchOverlay } from "./touchoverlay";
 
 import './App.scss';
 
 class App extends WebrcadeApp {
   emulator = null;
+
+  constructor() {
+    super();
+
+    this.state = {
+      ...this.state,
+      showCanvas: false,
+    };
+  }
 
   createEmulator(app, isDebug) {
     return new Emulator(app, isDebug);
@@ -122,9 +132,15 @@ class App extends WebrcadeApp {
     }
   }
 
+  showCanvas() {
+    this.setState({showCanvas: true});
+  }
+
   renderCanvas() {
+    const { showCanvas } = this.state;
     return (
       <canvas
+        style={{display: showCanvas ? 'block' : 'none'}}
         ref={(canvas) => {
           this.canvas = canvas;
         }}
@@ -134,7 +150,7 @@ class App extends WebrcadeApp {
   }
 
   render() {
-    const { errorMessage, loadingMessage, statusMessage, mode } = this.state;
+    const { errorMessage, loadingMessage, showCanvas, statusMessage, mode } = this.state;
     const { ModeEnum } = this;
 
     return (
@@ -145,6 +161,7 @@ class App extends WebrcadeApp {
           : null}
         {mode === ModeEnum.PAUSE ? this.renderPauseScreen() : null}
         {this.renderCanvas()}
+        <TouchOverlay show={showCanvas} />
       </Fragment>
     );
   }

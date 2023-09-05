@@ -3,6 +3,7 @@ import {
   Controller,
   Controllers,
   DisplayLoop,
+  registerAudioResume,
   CIDS,
   LOG
 } from '@webrcade/app-common';
@@ -30,6 +31,15 @@ export class Emulator extends AppWrapper {
     return new Controllers([
       new Controller(),
     ]);
+  }
+
+  createTouchListener() {}
+
+  showCanvas() {
+    this.app.showCanvas()
+    setTimeout(() => {
+      this.canvas.style.opacity = "1.0";
+    }, 2000);
   }
 
   createAudioProcessor() { return null; }
@@ -152,8 +162,8 @@ export class Emulator extends AppWrapper {
             "savepath=/saves\n" +
             "themepath=/data/\n" +
             // "gfx_mode=2x\n" +               // OpenGL opengl
-            // "monosize=22\n" +  // Text adventure text size (mono fonts)
-            // "propsize=18\n" +  // Standard fonts
+            "monosize=22\n" +  // Text adventure text size (mono fonts)
+            "propsize=18\n" +  // Standard fonts
             "autosave_period=0\n"         // Disable auto save
           )
 
@@ -202,17 +212,31 @@ export class Emulator extends AppWrapper {
           if (arguments.length > 1) e = Array.prototype.slice.call(arguments).join(" ")
           console.error(e);
         },
+        canvas: function () {
+          return document.getElementById("canvas");
+        }(),
         onRuntimeInitialized: () => {
           const f = () => {
             // Enable show message
             this.setShowMessageEnabled(true);
-          }
+            if (window.Module.SDL2 && window.Module.SDL2.audioContext) {
+              if (window.Module.SDL2.audioContext.state !== 'running') {
+                app.setShowOverlay(true);
+                registerAudioResume(
+                  window.Module.SDL2.audioContext,
+                  (running) => {
+                    setTimeout(() => app.setShowOverlay(!running), 50);
+                  },
+                  500,
+                );
+              }
+            } else {
+              setTimeout(f, 1000);
+            }
+          };
           setTimeout(f, 1000);
           resolve();
         },
-        canvas: function () {
-          return document.getElementById("canvas");
-        }(),
       };
 
       const script = document.createElement('script');
