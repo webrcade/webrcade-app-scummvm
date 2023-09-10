@@ -3,12 +3,22 @@ import { Component } from "react";
 import {
   ImageButton,
   KeyboardWhiteImage,
-  PauseWhiteImage
+  PauseWhiteImage,
+  MouseWhiteImage,
+  SwipeWhiteImage
 } from '@webrcade/app-common';
 
 import './style.scss'
 
 export class TouchOverlay extends Component {
+  constructor() {
+    super();
+
+    this.state = {
+      refresh: 0
+    }
+  }
+
   render() {
     const { show } = this.props;
     const { emulator } = window;
@@ -29,10 +39,18 @@ export class TouchOverlay extends Component {
           <div className="touch-overlay-buttons-left"></div>
           <div className="touch-overlay-buttons-center"></div>
           <div className="touch-overlay-buttons-right">
-            <ImageButton
+          <ImageButton
               className="touch-overlay-button"
               imgSrc={KeyboardWhiteImage}
               onClick={() => { window.Module._emKeyboard()}}
+            />
+          <ImageButton
+              className="touch-overlay-button"
+              imgSrc={emulator.isTouchpadMode() ? SwipeWhiteImage : MouseWhiteImage}
+              onClick={() => {
+                emulator.toggleTouchpadMode()
+                this.setState({refresh: this.state.refresh + 1});
+              }}
             />
             <ImageButton
               className="touch-overlay-button touch-overlay-button-last"

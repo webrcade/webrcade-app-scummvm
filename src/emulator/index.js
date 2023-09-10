@@ -20,6 +20,40 @@ export class Emulator extends AppWrapper {
     window.emulator = this;
     this.bytes = null;
     this.threed = false;
+    this.touchEvent = false;
+    this.touchEnabled = false;
+    this.touchEventCount = 0;
+    this.mouseEventCount = 0;
+    this.touchpadMode = false;
+  }
+
+  isTouchpadMode() {
+    return this.touchpadMode;
+  }
+
+  toggleTouchpadMode() {
+    this.touchpadMode = !this.touchpadMode;
+    window.Module._emSetTouchpadMouseMode(this.touchpadMode);
+  }
+
+  setFilterMouseEvents(filter) {
+    const Module = window.Module;
+    try {
+      Module._emSetFilterMouseEvents(filter);
+      console.log("## Filter mouse events: " + filter);
+      this.touchEnabled = filter;
+    } catch(e) { console.error(e) }
+  }
+
+  onTouchEvent() {
+    this.touchEventCount++;
+    if (!this.touchEnabled) {
+      this.setFilterMouseEvents(true);
+    }
+  }
+
+  onMouseEvent() {
+    this.mouseEventCount++;
   }
 
   setArchive(uid, bytes) {
@@ -51,9 +85,13 @@ export class Emulator extends AppWrapper {
   onPause(p) {
     const Module = window.Module;
     if (p) {
-      Module._emPause();
+      try {
+        Module._emPause();
+      } catch (e) {}
     } else {
-      Module._emUnpause();
+      try {
+        Module._emUnpause();
+      } catch (e) {}
     }
   }
 
@@ -391,8 +429,21 @@ export class Emulator extends AppWrapper {
     this.startTime = Date.now();
     this.canvas = canvas;
 
+    const onTouch = () => { this.onTouchEvent() };
+    window.addEventListener("touchstart", onTouch);
+    window.addEventListener("touchend", onTouch);
+    window.addEventListener("touchcancel", onTouch);
+    window.addEventListener("touchmove", onTouch);
+
+    const onMouse = () => { this.onMouseEvent() };
+    window.addEventListener("mousedown", onMouse);
+    window.addEventListener("mouseup", onMouse);
+    window.addEventListener("mousemove", onMouse);
+
     // Prevent right click displaying menu
     window.addEventListener("contextmenu", e => e.preventDefault());
+
+    window.Module._emSetTouchpadMouseMode(this.touchpadMode);
 
     try {
       // Hack to fix issue where screen is not sized correctly on initial load
@@ -408,8 +459,22 @@ export class Emulator extends AppWrapper {
         false, // no wait
       );
       loop.setAdjustTimestampEnabled(false);
+
+      let count = 0;
       loop.start(() => {
         this.pollControls();
+        count++;
+        if (count === 60) {
+          // console.log(this.canvas.width + ", " + this.canvas.height);
+          // console.log("touch: " + this.touchEventCount);
+          // console.log("mouse: " + this.mouseEventCount);
+          if (this.touchEnabled && this.touchEventCount === 0 && this.mouseEventCount >= 2) {
+            this.setFilterMouseEvents(false);
+          }
+          this.touchEventCount = 0;
+          this.mouseEventCount = 0;
+          count = 0;
+        }
       });
 
     } catch (e) {
