@@ -9,6 +9,7 @@ import {
 } from '@webrcade/app-common';
 
 import ScummvmFS from './scummvm_fs';
+import { Prefs } from './prefs'
 
 export class Emulator extends AppWrapper {
 
@@ -24,16 +25,22 @@ export class Emulator extends AppWrapper {
     this.touchEnabled = false;
     this.touchEventCount = 0;
     this.mouseEventCount = 0;
-    this.touchpadMode = false;
+    this.screenWidth = 0;
+    this.screenHeight = 0;
+
+    this.prefs = new Prefs(this);
   }
 
   isTouchpadMode() {
-    return this.touchpadMode;
+    const value = this.prefs.getTouchpadMouseMode();
+    console.log("isTouchpadMode: " + value);
+    return value;
   }
 
   toggleTouchpadMode() {
-    this.touchpadMode = !this.touchpadMode;
-    window.Module._emSetTouchpadMouseMode(this.touchpadMode);
+    const value = !this.prefs.getTouchpadMouseMode();
+    this.prefs.setTouchpadMouseMode(value);
+    window.Module._emSetTouchpadMouseMode(value);
   }
 
   setFilterMouseEvents(filter) {
@@ -46,6 +53,12 @@ export class Emulator extends AppWrapper {
   }
 
   onTouchEvent() {
+    const Module = window.Module;
+    if (!this.firstTouch) {
+      this.firstTouch = true;
+      Module._emSetTouchpadMouseMode(this.prefs.getTouchpadMouseMode());
+    }
+
     this.touchEventCount++;
     if (!this.touchEnabled) {
       this.setFilterMouseEvents(true);
@@ -204,6 +217,15 @@ export class Emulator extends AppWrapper {
             "propsize=18\n" +  // Standard fonts
             "autosave_period=0\n"         // Disable auto save
           )
+
+          // Write the predictive dictionary
+          try {
+            const response = await fetch("pred.dic");
+            const dictionary = await response.text();
+            FS.writeFile("/pred.dic", dictionary);
+          } catch (e) {
+            LOG.error(e);
+          }
 
           if (this.is3d()) {
             contents += "gfx_mode=opengl\n"; // OpenGL opengl
@@ -377,11 +399,11 @@ export class Emulator extends AppWrapper {
   }
 
   updateBilinearFilter() {
-    const { Module } = window;
-    const enabled = this.isBilinearFilterEnabled();
-    try {
-      Module._emSetFilterEnabled(enabled);
-    } catch {}
+    // const { Module } = window;
+    // const enabled = this.isBilinearFilterEnabled();
+    // try {
+    //   Module._emSetFilterEnabled(enabled);
+    // } catch {}
   }
 
   isForceAspectRatio() {
@@ -423,6 +445,17 @@ export class Emulator extends AppWrapper {
     }
   }
 
+  updateScreenDimensions() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    if (width !== this.screenWidth || height !== this.screenHeight) {
+      this.screenWidth = width;
+      this.screenHeight = height;
+      console.log(this.screenWidth + ", " + this.screenHeight);
+      window.Module._emSetScreenSize(this.screenWidth, this.screenHeight);
+    }
+  }
+
   async onStart(canvas) {
     const { app } = this;
 
@@ -443,7 +476,11 @@ export class Emulator extends AppWrapper {
     // Prevent right click displaying menu
     window.addEventListener("contextmenu", e => e.preventDefault());
 
-    window.Module._emSetTouchpadMouseMode(this.touchpadMode);
+    // Set the initial touchpad mode
+    window.Module._emSetTouchpadMouseMode(false);
+
+    // Enable bilinear filter
+    window.Module._emSetFilterEnabled(true);
 
     try {
       // Hack to fix issue where screen is not sized correctly on initial load
@@ -460,12 +497,16 @@ export class Emulator extends AppWrapper {
       );
       loop.setAdjustTimestampEnabled(false);
 
+      // Update the screen size
+      this.updateScreenDimensions();
+
       let count = 0;
       loop.start(() => {
         this.pollControls();
         count++;
         if (count === 60) {
-          // console.log(this.canvas.width + ", " + this.canvas.height);
+          // Update the screen size
+          this.updateScreenDimensions();
           // console.log("touch: " + this.touchEventCount);
           // console.log("mouse: " + this.mouseEventCount);
           if (this.touchEnabled && this.touchEventCount === 0 && this.mouseEventCount >= 2) {
