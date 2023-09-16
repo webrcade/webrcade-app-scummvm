@@ -10,6 +10,7 @@ import {
 
 import ScummvmFS from './scummvm_fs';
 import { Prefs } from './prefs'
+import FileManifest from './filemanifest'
 
 export class Emulator extends AppWrapper {
 
@@ -27,6 +28,7 @@ export class Emulator extends AppWrapper {
     this.mouseEventCount = 0;
     this.screenWidth = 0;
     this.screenHeight = 0;
+    this.selectDown = false;
 
     this.prefs = new Prefs(this);
   }
@@ -69,9 +71,10 @@ export class Emulator extends AppWrapper {
     this.mouseEventCount++;
   }
 
-  setArchive(uid, bytes) {
+  setArchive(uid, bytes, url) {
     this.uid = uid;
     this.bytes = bytes;
+    this.url = url;
   }
 
   createControllers() {
@@ -204,6 +207,7 @@ export class Emulator extends AppWrapper {
           // Write init file for ScummVM
           let contents = (
             "[scummvm]\n" +
+            "joystick_deadzone=10\n" +
             "aspect_ratio=true\n" +
             "renderer=software\n" +
             "pluginspath=/plugins\n" +      // Plugins path
@@ -215,7 +219,9 @@ export class Emulator extends AppWrapper {
             // "gfx_mode=2x\n" +               // OpenGL opengl
             "monosize=22\n" +  // Text adventure text size (mono fonts)
             "propsize=18\n" +  // Standard fonts
-            "autosave_period=0\n"         // Disable auto save
+            "autosave_period=0\n" +     // Disable auto save
+            "[keymapper]\n" +
+            "keymap_global_VIRT=\n"
           )
 
           // Write the predictive dictionary
@@ -234,12 +240,35 @@ export class Emulator extends AppWrapper {
           FS.writeFile("/scummvm.ini", contents);
 
           // Extract the archive
-          await this.extractArchive(
-            FS, "/game", this.bytes, 10 * 1024 * 1024 * 1024, this
-          );
+          let size = 0;
+          try {
+            await this.extractArchive(
+              FS, "/game", this.bytes, 10 * 1024 * 1024 * 1024, this
+            );
+            size = this.bytes.length;
+            setTimeout(() => {
+              app.setState({ loadingMessage: "Starting", loadingPercent: null });
+            }, 0);
+          } catch (e) {
+            LOG.info("Not a zip file, checking for a manifest.");
+            FS.mkdir("/game");
+            const manifest = new FileManifest(this, FS, "/game", this.bytes, this.url);
+            const totalSize = await manifest.process();
+            if (!totalSize) throw e;
+            size = totalSize;
+          }
 
           // TODO: Try not storing bytes?
           this.bytes = null;
+
+          let pause = false;
+          if (size > 100 * 1024 * 1024) {
+            pause = true;
+          }
+
+          if (pause) {
+            await this.wait(5000);
+          }
 
           // Load the save state
           FS.mkdir(this.SAVES_DIR);
@@ -247,6 +276,9 @@ export class Emulator extends AppWrapper {
           this.saveStatePath = `${this.saveStatePrefix}${this.SAVE_NAME}`;
           await this.loadState();
 
+          if (pause) {
+            await this.wait(10000);
+          }
         } catch (e) {
           app.setState({ loadingMessage: null, loadingPercent: null });
           LOG.error(e);
@@ -388,7 +420,23 @@ export class Emulator extends AppWrapper {
 
     controllers.poll();
 
-    if (controllers.isControlDown(0, CIDS.ESCAPE)) {
+    //       start -> pause (escape)
+    //       select -> keyboard
+
+    if (controllers.isControlDown(0, CIDS.SELECT)) {
+      if (this.selectDown) return;
+
+      this.selectDown = true;
+      controllers
+        .waitUntilControlReleased(0, CIDS.SELECT)
+          .then(() => {
+            console.log('show keyboard')
+            window.Module._emKeyboard()
+            this.selectDown = false;
+          });
+    }
+
+    if (controllers.isControlDown(0, CIDS.START) || controllers.isControlDown(0, CIDS.ESCAPE)) {
       if (this.pause(true)) {
         controllers
           .waitUntilControlReleased(0, CIDS.ESCAPE)

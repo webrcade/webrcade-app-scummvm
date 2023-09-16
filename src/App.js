@@ -50,14 +50,14 @@ class App extends WebrcadeApp {
           return this.fetchResponseBuffer(response);
         })
         .then((bytes) => {
-          emulator.setArchive(this.uid, bytes);
+          emulator.setArchive(this.uid, bytes, this.archive);
           return bytes;
         })
         .then(() => emulator.loadEmscriptenModule(this.canvas))
         .then(() =>
           this.setState({
             mode: ModeEnum.LOADED,
-            loadingMessage: 'Loading',
+            loadingMessage: null,
           }),
         )
         .catch((msg) => {
