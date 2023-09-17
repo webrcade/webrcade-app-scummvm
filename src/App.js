@@ -54,11 +54,14 @@ class App extends WebrcadeApp {
           return bytes;
         })
         .then(() => emulator.loadEmscriptenModule(this.canvas))
-        .then(() =>
-          this.setState({
-            mode: ModeEnum.LOADED,
-            loadingMessage: null,
-          }),
+        .then(() => {
+            if (this.state.mode !== ModeEnum.ERROR) {
+              this.setState({
+                mode: ModeEnum.LOADED,
+                loadingMessage: null,
+              })
+            }
+          }
         )
         .catch((msg) => {
           LOG.error(msg);
