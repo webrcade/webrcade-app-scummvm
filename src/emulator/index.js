@@ -3,6 +3,7 @@ import {
   Controller,
   Controllers,
   DisplayLoop,
+  FileManifest,
   registerAudioResume,
   CIDS,
   LOG
@@ -10,7 +11,6 @@ import {
 
 import ScummvmFS from './scummvm_fs';
 import { Prefs } from './prefs'
-import FileManifest from './filemanifest'
 
 export class Emulator extends AppWrapper {
 
