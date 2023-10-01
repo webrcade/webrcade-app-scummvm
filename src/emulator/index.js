@@ -189,12 +189,6 @@ export class Emulator extends AppWrapper {
 
         window.addRunDependency("scummvm-fs-setup");
         try {
-          app.setState({ loadingMessage: null, loadingPercent: null });
-
-          setTimeout(() => {
-            app.setState({ loadingMessage: 'Preparing files' });
-          }, 0);
-
           await setupHTTPFilesystem("plugins");
           await setupHTTPFilesystem("data");
 
@@ -216,12 +210,13 @@ export class Emulator extends AppWrapper {
             "vkeybd_pack_name=vkeybd_default\n" +
             "savepath=/saves\n" +
             "themepath=/data/\n" +
-            // "gfx_mode=2x\n" +               // OpenGL opengl
+            // "gfx_mode=1x\n" +               // OpenGL opengl
             "monosize=22\n" +  // Text adventure text size (mono fonts)
             "propsize=18\n" +  // Standard fonts
             "autosave_period=0\n" +     // Disable auto save
+            // "enable_unsupported_game_warning=false\n" + // TODO: Show WRC message
             "[keymapper]\n" +
-            "keymap_global_VIRT=\n"
+            "keymap_global_VIRT=C+F7\n"
           )
 
           // Write the predictive dictionary
@@ -242,13 +237,14 @@ export class Emulator extends AppWrapper {
           // Extract the archive
           let size = 0;
           try {
+            if (this.bytes.length > 10 * 1024 * 1024) {
+              app.setState({ loadingMessage: "Preparing files", loadingPercent: null });
+              await this.wait(10);
+            }
             await this.extractArchive(
               FS, "/game", this.bytes, 10 * 1024 * 1024 * 1024, this
             );
             size = this.bytes.length;
-            setTimeout(() => {
-              app.setState({ loadingMessage: "Starting", loadingPercent: null });
-            }, 0);
           } catch (e) {
             LOG.info("Not a zip file, checking for a manifest.");
             FS.mkdir("/game");
@@ -260,6 +256,9 @@ export class Emulator extends AppWrapper {
 
           // TODO: Try not storing bytes?
           this.bytes = null;
+
+          app.setState({ loadingMessage: "Starting", loadingPercent: null });
+          await this.wait(10);
 
           let pause = false;
           if (size > 100 * 1024 * 1024) {
@@ -280,7 +279,6 @@ export class Emulator extends AppWrapper {
             await this.wait(10000);
           }
         } catch (e) {
-          app.setState({ loadingMessage: null, loadingPercent: null });
           LOG.error(e);
           app.exit(e);
           return false;
@@ -423,25 +421,26 @@ export class Emulator extends AppWrapper {
     //       start -> pause (escape)
     //       select -> keyboard
 
-    if (controllers.isControlDown(0, CIDS.SELECT)) {
-      if (this.selectDown) return;
-
-      this.selectDown = true;
-      controllers
-        .waitUntilControlReleased(0, CIDS.SELECT)
-          .then(() => {
-            console.log('show keyboard')
-            window.Module._emKeyboard()
-            this.selectDown = false;
-          });
-    }
-
     if (controllers.isControlDown(0, CIDS.START) || controllers.isControlDown(0, CIDS.ESCAPE)) {
       if (this.pause(true)) {
         controllers
           .waitUntilControlReleased(0, CIDS.ESCAPE)
           .then(() => this.showPauseMenu());
         return;
+      }
+    }
+
+    if (!this.paused) {
+      if (controllers.isControlDown(0, CIDS.SELECT)) {
+        if (this.selectDown) return;
+        this.selectDown = true;
+        controllers
+          .waitUntilControlReleased(0, CIDS.SELECT)
+            .then(() => {
+              console.log('show keyboard')
+              window.Module._emKeyboard()
+              this.selectDown = false;
+            });
       }
     }
   }
@@ -534,8 +533,6 @@ export class Emulator extends AppWrapper {
       // Hack to fix issue where screen is not sized correctly on initial load
       this.forceResize();
 
-      app.setState({ loadingMessage: null, loadingPercent: null });
-
       const loop = new DisplayLoop(
         60, // frame rate (ignored due to no wait)
         true, // vsync
@@ -567,7 +564,6 @@ export class Emulator extends AppWrapper {
       });
 
     } catch (e) {
-      app.setState({ loadingMessage: null, loadingPercent: null });
       LOG.error(e);
       app.exit(e);
     }

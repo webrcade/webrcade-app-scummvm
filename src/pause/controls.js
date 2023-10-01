@@ -6,11 +6,16 @@ export class GamepadControlsTab extends ControlsTab {
   render() {
     return (
       <>
-        {this.renderControl('start', 'Reset')}
-        {this.renderControl('select', 'Select')}
-        {this.renderControl('dpad', 'Move')}
-        {this.renderControl('lanalog', 'Move')}
-        {this.renderControl('a', 'Fire')}
+        {this.renderControl('lanalog', 'Mouse')}
+        {this.renderControl('rbump', 'Slow Mouse')}
+        {this.renderControl('dpad', 'Cursor Keys')}
+        {this.renderControl('a', 'Left Mouse Button')}
+        {this.renderControl('b', 'Right Mouse Button')}
+        {this.renderControl('x', 'Period Key')}
+        {this.renderControl('y', 'Escape Key')}
+        {this.renderControl('lbump', 'Game-specific Menu (if applicable)')}
+        {this.renderControl('start', 'Pause Screen')}
+        {this.renderControl('select', 'Keyboard')}
       </>
     );
   }
@@ -20,13 +25,12 @@ export class KeyboardControlsTab extends ControlsTab {
   render() {
     return (
       <>
-        {this.renderKey('Enter', 'Reset')}
-        {this.renderKey('ShiftRight', 'Select')}
-        {this.renderKey('ArrowUp', 'Up')}
-        {this.renderKey('ArrowDown', 'Down')}
-        {this.renderKey('ArrowLeft', 'Left')}
-        {this.renderKey('ArrowRight', 'Right')}
-        {this.renderKey('KeyZ', 'Fire')}
+        {this.renderKeys(['ControlLeft', 'KeyF5'], 'Pause Screen')}
+        {this.renderKeys(['ControlLeft', 'KeyF7'], 'Keyboard')}
+        {this.renderKey('Space', 'Pause (if applicable)')}
+        {this.renderKey('Escape', 'Skip')}
+        {this.renderKey('KeyPeriod', 'Skip Line')}
+        {this.renderKey('Enter', 'Confirm')}
       </>
     );
   }
