@@ -29,13 +29,16 @@ export class Emulator extends AppWrapper {
     this.screenWidth = 0;
     this.screenHeight = 0;
     this.selectDown = false;
+    this.afterCompatCheck = false;
+    this.preRunSet = false;
+    this.prompt = false;
 
     this.prefs = new Prefs(this);
   }
 
   isTouchpadMode() {
     const value = this.prefs.getTouchpadMouseMode();
-    console.log("isTouchpadMode: " + value);
+    LOG.info("isTouchpadMode: " + value);
     return value;
   }
 
@@ -49,7 +52,7 @@ export class Emulator extends AppWrapper {
     const Module = window.Module;
     try {
       Module._emSetFilterMouseEvents(filter);
-      console.log("## Filter mouse events: " + filter);
+      LOG.info("## Filter mouse events: " + filter);
       this.touchEnabled = filter;
     } catch(e) { console.error(e) }
   }
@@ -130,7 +133,7 @@ export class Emulator extends AppWrapper {
     const path = this.SAVES_DIR + "/" + fileName;
     for (let i = 0; i < 10; i++) {
       const res = FS.analyzePath(path, true);
-      console.log(res);
+      LOG.info(res);
       if (res.exists) {
         Module._emPause();
         setTimeout(() => {
@@ -157,12 +160,12 @@ export class Emulator extends AppWrapper {
   }
 
   async onShowPauseMenu() {
-    console.log(window.FS.readdir("/saves"));
+    LOG.info(window.FS.readdir("/saves"));
     await this.saveState();
   }
 
   set3d(val) {
-    console.log("### set3d: " + val);
+    LOG.info("### set3d: " + val);
     this.threed = val;
     setTimeout(() => {
       this.updateScreenSize();
@@ -214,7 +217,7 @@ export class Emulator extends AppWrapper {
             "monosize=22\n" +  // Text adventure text size (mono fonts)
             "propsize=18\n" +  // Standard fonts
             "autosave_period=0\n" +     // Disable auto save
-            // "enable_unsupported_game_warning=false\n" + // TODO: Show WRC message
+            "enable_unsupported_game_warning=true\n" + // TODO: Show WRC message
             "[keymapper]\n" +
             "keymap_global_VIRT=C+F7\n"
           )
@@ -296,7 +299,7 @@ export class Emulator extends AppWrapper {
         postRun: [],
         print: function (t) {
           if (arguments.length > 1) t = Array.prototype.slice.call(arguments).join(" ")
-          console.log(t);
+          LOG.info(t);
         },
         printErr: function (e) {
           if (arguments.length > 1) e = Array.prototype.slice.call(arguments).join(" ")
@@ -306,25 +309,6 @@ export class Emulator extends AppWrapper {
           return document.getElementById("canvas");
         }(),
         onRuntimeInitialized: () => {
-          const f = () => {
-            // Enable show message
-            this.setShowMessageEnabled(true);
-            if (window.Module.SDL2 && window.Module.SDL2.audioContext) {
-              if (window.Module.SDL2.audioContext.state !== 'running') {
-                app.setShowOverlay(true);
-                registerAudioResume(
-                  window.Module.SDL2.audioContext,
-                  (running) => {
-                    setTimeout(() => app.setShowOverlay(!running), 50);
-                  },
-                  500,
-                );
-              }
-            } else {
-              setTimeout(f, 1000);
-            }
-          };
-          setTimeout(f, 1000);
           resolve();
         },
       };
@@ -333,6 +317,21 @@ export class Emulator extends AppWrapper {
       document.body.appendChild(script);
       script.src = "js/scummvm.js";
     });
+  }
+
+  preRun() {
+    LOG.info("## pre run.");
+    this.preRunSet = true;
+  }
+
+  afterCompatibilityCheck() {
+    LOG.info("## after compatibility check.");
+    this.afterCompatCheck = true;
+  }
+
+  showCompatibilityPrompt() {
+    LOG.info("## show compatibility prompt.");
+    this.prompt = true;
   }
 
   exit() {
@@ -437,7 +436,7 @@ export class Emulator extends AppWrapper {
         controllers
           .waitUntilControlReleased(0, CIDS.SELECT)
             .then(() => {
-              console.log('show keyboard')
+              LOG.info('show keyboard')
               window.Module._emKeyboard()
               this.selectDown = false;
             });
@@ -498,74 +497,137 @@ export class Emulator extends AppWrapper {
     if (width !== this.screenWidth || height !== this.screenHeight) {
       this.screenWidth = width;
       this.screenHeight = height;
-      console.log(this.screenWidth + ", " + this.screenHeight);
+      LOG.info(this.screenWidth + ", " + this.screenHeight);
       window.Module._emSetScreenSize(this.screenWidth, this.screenHeight);
     }
   }
 
   async onStart(canvas) {
-    const { app } = this;
 
-    this.startTime = Date.now();
     this.canvas = canvas;
+    LOG.info("## onstart.");
 
-    const onTouch = () => { this.onTouchEvent() };
-    window.addEventListener("touchstart", onTouch);
-    window.addEventListener("touchend", onTouch);
-    window.addEventListener("touchcancel", onTouch);
-    window.addEventListener("touchmove", onTouch);
+    while (!this.preRunSet) {
+      LOG.info("## waiting...");
+      await this.wait(100);
+    }
 
-    const onMouse = () => { this.onMouseEvent() };
-    window.addEventListener("mousedown", onMouse);
-    window.addEventListener("mouseup", onMouse);
-    window.addEventListener("mousemove", onMouse);
+    const { app } = this;
+    const { Module } = window;
 
-    // Prevent right click displaying menu
-    window.addEventListener("contextmenu", e => e.preventDefault());
-
-    // Set the initial touchpad mode
-    window.Module._emSetTouchpadMouseMode(false);
-
-    // Enable bilinear filter
-    window.Module._emSetFilterEnabled(true);
-
-    try {
-      // Hack to fix issue where screen is not sized correctly on initial load
-      this.forceResize();
-
-      const loop = new DisplayLoop(
-        60, // frame rate (ignored due to no wait)
-        true, // vsync
-        this.debug, // debug
-        true, // force native
-        false, // no wait
-      );
-      loop.setAdjustTimestampEnabled(false);
-
-      // Update the screen size
-      this.updateScreenDimensions();
-
-      let count = 0;
-      loop.start(() => {
-        this.pollControls();
-        count++;
-        if (count === 60) {
-          // Update the screen size
-          this.updateScreenDimensions();
-          // console.log("touch: " + this.touchEventCount);
-          // console.log("mouse: " + this.mouseEventCount);
-          if (this.touchEnabled && this.touchEventCount === 0 && this.mouseEventCount >= 2) {
-            this.setFilterMouseEvents(false);
-          }
-          this.touchEventCount = 0;
-          this.mouseEventCount = 0;
-          count = 0;
+    const f = () => {
+      // Enable show message
+      this.setShowMessageEnabled(true);
+      if (window.Module.SDL2 && window.Module.SDL2.audioContext) {
+        if (window.Module.SDL2.audioContext.state !== 'running') {
+          app.setShowOverlay(true);
+          registerAudioResume(
+            window.Module.SDL2.audioContext,
+            (running) => {
+              setTimeout(() => app.setShowOverlay(!running), 50);
+            },
+            500,
+          );
         }
-      });
+      } else {
+        setTimeout(f, 1000);
+      }
+    };
+    setTimeout(f, 1000);
 
-    } catch (e) {
-      LOG.error(e);
-      app.exit(e);
+    canvas.style.display = 'none';
+
+    const start = async () => {
+      this.startTime = Date.now();
+      canvas.style.display = 'block';
+
+      const onTouch = () => { this.onTouchEvent() };
+      window.addEventListener("touchstart", onTouch);
+      window.addEventListener("touchend", onTouch);
+      window.addEventListener("touchcancel", onTouch);
+      window.addEventListener("touchmove", onTouch);
+
+      const onMouse = () => { this.onMouseEvent() };
+      window.addEventListener("mousedown", onMouse);
+      window.addEventListener("mouseup", onMouse);
+      window.addEventListener("mousemove", onMouse);
+
+      // Prevent right click displaying menu
+      window.addEventListener("contextmenu", e => e.preventDefault());
+
+      // Set the initial touchpad mode
+      window.Module._emSetTouchpadMouseMode(false);
+
+      // Enable bilinear filter
+      window.Module._emSetFilterEnabled(true);
+
+      try {
+        // Hack to fix issue where screen is not sized correctly on initial load
+        this.forceResize();
+
+        const loop = new DisplayLoop(
+          60, // frame rate (ignored due to no wait)
+          true, // vsync
+          this.debug, // debug
+          true, // force native
+          false, // no wait
+        );
+        loop.setAdjustTimestampEnabled(false);
+
+        // Update the screen size
+        this.updateScreenDimensions();
+
+        let count = 0;
+        loop.start(() => {
+          this.pollControls();
+          count++;
+          if (count === 60) {
+            // Update the screen size
+            this.updateScreenDimensions();
+            // LOG.info("touch: " + this.touchEventCount);
+            // LOG.info("mouse: " + this.mouseEventCount);
+            if (this.touchEnabled && this.touchEventCount === 0 && this.mouseEventCount >= 2) {
+              this.setFilterMouseEvents(false);
+            }
+            this.touchEventCount = 0;
+            this.mouseEventCount = 0;
+            count = 0;
+
+            let ping = false;
+            try {
+              ping = window.Module._emPing();
+            } catch (e) {
+              LOG.error(e);
+            }
+            if (!ping) {
+              app.exit("An unexpected error has occurred.");
+            }
+          }
+        });
+      } catch (e) {
+        LOG.error(e);
+        app.exit(e);
+      }
+    }
+
+    if (this.prompt) {
+      Module._emPause();
+      app.yesNoPrompt({
+        header: 'Compatibility Issues',
+        message: 'This game is known to have compatibility issues.',
+        prompt: 'Do you still wish to continue?',
+        onYes: async (prompt) => {
+          prompt.close();
+          Module._emUnpause();
+          await start();
+        },
+        onNo: (prompt) => {
+          prompt.close();
+          app.exit();
+        },
+      });
+    } else {
+      await start();
     }
   }
 }
