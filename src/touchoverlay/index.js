@@ -15,15 +15,24 @@ export class TouchOverlay extends Component {
     super();
 
     this.state = {
-      refresh: 0
+      refresh: 0,
+      initialShow: true
     }
   }
 
   render() {
     const { show } = this.props;
+    const { initialShow } = this.state;
     const { emulator } = window;
 
     if (!emulator || !show) return <></>;
+
+    if (initialShow) {
+      this.setState({initialShow: false});
+      setTimeout(() => {
+        emulator.updateOnScreenControls(true);
+      }, 0);
+    }
 
     const app = emulator.app;
 
@@ -34,24 +43,28 @@ export class TouchOverlay extends Component {
     }
 
     return (
-      <div className="touch-overlay">
+      <div className="touch-overlay" id="touch-overlay">
         <div className="touch-overlay-buttons">
           <div className="touch-overlay-buttons-left"></div>
           <div className="touch-overlay-buttons-center"></div>
           <div className="touch-overlay-buttons-right">
-          <ImageButton
+            <ImageButton
               className="touch-overlay-button"
               imgSrc={KeyboardWhiteImage}
-              onClick={() => { window.Module._emKeyboard()}}
-            />
-          <ImageButton
-              className="touch-overlay-button"
-              imgSrc={emulator.isTouchpadMode() ? SwipeWhiteImage : MouseWhiteImage}
               onClick={() => {
-                emulator.toggleTouchpadMode()
-                this.setState({refresh: this.state.refresh + 1});
+                window.Module._emKeyboard()
               }}
             />
+            {emulator.isTouchEvent() &&
+              <ImageButton
+                className="touch-overlay-button"
+                imgSrc={emulator.isTouchpadMode() ? SwipeWhiteImage : MouseWhiteImage}
+                onClick={() => {
+                  emulator.toggleTouchpadMode()
+                  this.setState({ refresh: this.state.refresh + 1 });
+                }}
+              />
+            }
             <ImageButton
               className="touch-overlay-button touch-overlay-button-last"
               onClick={showPause}

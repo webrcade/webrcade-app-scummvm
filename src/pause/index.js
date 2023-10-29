@@ -107,6 +107,7 @@ export class EmulatorPauseScreen extends Component {
         {mode === ModeEnum.SETTINGS ? (
           <AppSettingsEditor
             hideBilinear={true}
+            showOnScreenControls={true}
             emulator={emulator}
             onClose={closeCallback}
           />

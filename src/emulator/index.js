@@ -6,6 +6,7 @@ import {
   FileManifest,
   registerAudioResume,
   CIDS,
+  SCREEN_CONTROLS,
   LOG
 } from '@webrcade/app-common';
 
@@ -36,6 +37,10 @@ export class Emulator extends AppWrapper {
     this.prefs = new Prefs(this);
   }
 
+  isTouchEvent() {
+    return this.touchEvent;
+  }
+
   isTouchpadMode() {
     const value = this.prefs.getTouchpadMouseMode();
     LOG.info("isTouchpadMode: " + value);
@@ -57,7 +62,26 @@ export class Emulator extends AppWrapper {
     } catch(e) { console.error(e) }
   }
 
+  showTouchOverlay(show) {
+    const to = document.getElementById("touch-overlay");
+    if (to) {
+      to.style.display = show ? 'block' : 'none';
+    }
+  }
+
   onTouchEvent() {
+    const controls = this.prefs.getScreenControls();
+
+    if (!this.touchEvent) {
+      if (controls === SCREEN_CONTROLS.SC_AUTO) {
+        setTimeout(() => {
+          this.showTouchOverlay(true);
+          this.app.forceRefresh();
+        }, 0);
+      }
+      this.touchEvent = true;
+    }
+
     const Module = window.Module;
     if (!this.firstTouch) {
       this.firstTouch = true;
@@ -440,6 +464,22 @@ export class Emulator extends AppWrapper {
               window.Module._emKeyboard()
               this.selectDown = false;
             });
+      }
+    }
+  }
+
+  updateOnScreenControls(initial = false) {
+    const controls = this.prefs.getScreenControls();
+    if (controls === SCREEN_CONTROLS.SC_OFF) {
+      this.showTouchOverlay(false);
+    } else if (controls === SCREEN_CONTROLS.SC_ON) {
+      this.showTouchOverlay(true);
+    } else if (controls === SCREEN_CONTROLS.SC_AUTO) {
+      if (!initial) {
+        setTimeout(() => {
+          this.showTouchOverlay(this.touchEvent);
+          this.app.forceRefresh();
+        }, 0);
       }
     }
   }

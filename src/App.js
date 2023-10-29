@@ -39,6 +39,9 @@ class App extends WebrcadeApp {
 
     this.setState({ mode: ModeEnum.LOADING });
 
+    window.scummArgs = ["--auto-detect"];
+    // window.scummArgs = ["--add", "--engine=lab", "--game=lab:lab"];
+
     try {
       const fad = new FetchAppData(this.archive);
 
