@@ -176,6 +176,12 @@ export class Emulator extends AppWrapper {
 
   onSaveScreenshot(path) {}
 
+  onExitWithMessage(message) {
+    const { app } = this;
+    const msg = window.UTF8ToString(message);
+    app.exit(msg);
+  }
+
   onExit() {
     const { app } = this;
     setTimeout(() => {
@@ -547,8 +553,11 @@ export class Emulator extends AppWrapper {
     this.canvas = canvas;
     LOG.info("## onstart.");
 
+    let c = 0;
     while (!this.preRunSet) {
-      LOG.info("## waiting...");
+      if (c++ === 50) {
+        LOG.info("## waiting...");
+      }
       await this.wait(100);
     }
 
