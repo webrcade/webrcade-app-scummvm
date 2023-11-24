@@ -1,17 +1,22 @@
 #canvas {
-    border: 0;
-    margin: 0;
-    overflow: hidden;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    position: absolute;
-    width: 96vw;
-    height: 96vh;
-    cursor: none !important;
-    // max-width: calc(96vh * 1.333);
-    // max-height: calc(96vw * 0.75);
-    image-rendering: auto !important;
-    // border: 1px solid red;
-    opacity: 0.0;
-  }
+  border: 0;
+  margin: 0;
+  overflow: hidden;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  position: absolute;
+  width: 96vw;
+  height: 96vh;
+  //cursor: none !important;
+  // max-width: calc(96vh * 1.333);
+  // max-height: calc(96vw * 0.75);
+  image-rendering: auto !important;
+  // image-rendering: pixelated !important;
+  // border: 1px solid red;
+  opacity: 0.0;
+}
+
+.canvas-no-cursor {
+  cursor: none !important
+}

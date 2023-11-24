@@ -112,6 +112,8 @@ export default class ScummvmFS {
         const path = args.path;
         logger(path, "read, args:" + JSON.stringify(args))
 
+//  console.log("read, args:" + JSON.stringify(args))
+
         if (typeof this.fs_index[path] !== "object") {
             console.error("File hasn't been opened yet")
             throw new this.FS.ErrnoError(ERRNO_CODES.EPERM);
@@ -149,11 +151,11 @@ export default class ScummvmFS {
             }
             logger(path, "cache loaded ")
         } else {
-
             data = this.download(path, this.url, first_block, last_block, start, end);
         }
         return { ok: true, data: data };
     }
+
     download(path, _url, first_block, last_block, start, end) {
 console.log('download: ' + path);
         const self = this;
@@ -225,9 +227,6 @@ console.log('download: ' + path);
                             // This will automatically throw away the upper bit of each
                             // character for us.
                             self.fs_index[path].data[block][block_pos] = text.charCodeAt(i)
-
-
-
                         }
                         logger(path, "First block length: " + self.fs_index[path].data[block] + " last block length: " + self.fs_index[path].data[block] + "Text length: " + text.length)
                         for (block = first_block; block <= last_block; block++) {

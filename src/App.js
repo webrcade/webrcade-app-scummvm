@@ -13,8 +13,10 @@ import {
 import { Emulator } from "./emulator";
 import { EmulatorPauseScreen } from "./pause";
 import { TouchOverlay } from "./touchoverlay";
+import { Keyboard } from "./keyboard";
 
 import './App.scss';
+import { VK_TRANSPARENCY } from "./emulator/prefs";
 
 class App extends WebrcadeApp {
   emulator = null;
@@ -25,6 +27,9 @@ class App extends WebrcadeApp {
     this.state = {
       ...this.state,
       showCanvas: false,
+      showKeyboard: false,
+      kbTransparency: VK_TRANSPARENCY.HIGH,
+      kbCloseOnEnter: true
     };
   }
 
@@ -155,8 +160,28 @@ class App extends WebrcadeApp {
     );
   }
 
+  isKeyboardShown() {
+    return this.state.showKeyboard;
+  }
+
+  setKeyboardShown(value) {
+    try {
+      window.Module._emDisableGamepad(value);
+    } catch (e) {}
+    this.setState({showKeyboard: value})
+  }
+
+  setKeyboardTransparency(value) {
+    this.setState({kbTransparency: value});
+  }
+
+  setKeyboardCloseOnEnter(value) {
+    this.setState({kbCloseOnEnter: value});
+  }
+
   render() {
-    const { errorMessage, loadingMessage, showCanvas, statusMessage, mode } = this.state;
+    const { errorMessage, loadingMessage, showCanvas, showKeyboard, statusMessage,
+      mode, kbTransparency, kbCloseOnEnter} = this.state;
     const { ModeEnum } = this;
 
     return (
@@ -168,6 +193,12 @@ class App extends WebrcadeApp {
         {mode === ModeEnum.PAUSE ? this.renderPauseScreen() : null}
         {this.renderCanvas()}
         <TouchOverlay show={showCanvas} />
+        <Keyboard
+          show={showKeyboard}
+          transparency={kbTransparency}
+          closeOnEnter={kbCloseOnEnter}
+        />
+        {/* <div id="debugOutput" style={{overflow: 'auto', fontSize: "1.8rem", backgroundColor: 'black', opacity: "0.5", position: 'absolute', top: '0', left: '0', width: '100vw', height: '100px', border: '1px solid red'}} /> */}
       </Fragment>
     );
   }

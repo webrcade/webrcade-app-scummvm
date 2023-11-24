@@ -52,7 +52,7 @@ export class TouchOverlay extends Component {
               className="touch-overlay-button"
               imgSrc={KeyboardWhiteImage}
               onClick={() => {
-                window.Module._emKeyboard()
+                emulator.toggleKeyboard();
               }}
             />
             {emulator.isTouchEvent() &&

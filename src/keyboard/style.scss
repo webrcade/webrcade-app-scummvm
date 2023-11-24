@@ -1,0 +1,135 @@
+.keyboard {
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  --safe-area-inset-top: env(safe-area-inset-top);
+  animation: keyboard--fadein .5s;
+  animation-fill-mode: forwards;
+  opacity: 0;
+  padding: 0;
+  margin: 0;
+  position: absolute;
+  right: 0px;
+  left: 0px;
+  // bottom: max(var(--safe-area-inset-bottom), 2rem);
+  z-index: 50;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+
+  &-keyarea {
+    padding: .4rem;
+    width: fit-content;
+    margin: auto;
+    border-radius: .8rem;
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.5);
+
+    &-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}
+
+.keyboard-center {
+  top: 50%;
+  transform: translate(0, -50%);
+}
+
+// .keyboard-top {
+//   top: 2rem;
+// }
+
+.keyboard-bottom {
+  bottom: 2rem;
+}
+
+.keyarea-dark {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.kb-dot {
+  position: absolute;
+  background-color: #32CD32;
+  border-radius: 50%;
+  margin-left: .8rem;
+  margin-top: .8rem;
+  width: .8rem;
+  height: .8rem;
+  pointer-events: none;
+  opacity: .9;
+  animation: keyboard--fadein .5s;
+}
+
+.kb-key {
+  height: 4rem;
+  width: 6rem;
+  border: 1px solid #777;
+  margin: .4rem;
+  border-radius: .5rem;
+  background: linear-gradient(rgba(40, 40, 40, 0.6), rgba(80, 80, 80, 0.7));
+  opacity: 1;
+  overflow: hidden;
+  display: flex;
+  padding: 0;
+
+  &-label {
+    padding: 0;
+    color: white;
+    font-weight: bold;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 1.7rem;
+    margin: auto;
+  }
+
+  &:focus {
+    outline: none;
+    background: linear-gradient(rgba(180, 0, 0, 0.6), rgba(255, 0, 0, 0.7));
+    border-color: red;
+    transition: 0.25s;
+  }
+}
+
+.onclick {
+  // background: linear-gradient(rgba(180, 0, 0, 0.6), rgba(255, 0, 0, 0.7));
+  // border-color: red;
+  // border-color: #999;
+}
+
+.kb-key2w {
+  width: 12.8rem;
+  margin-left: .4rem;
+  margin-right: .4rem;
+}
+
+
+.kb-key-image {
+  &>img {
+    margin: auto;
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+
+  &>div {
+    height: 0;
+    width: 0;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+@keyframes keyboard--fadein {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes wiggle {
+  0% { transform: scale(1,  1); }
+  50% { transform: scale(1.15,  1.15); }
+  100% { transform: scale(1,  1); }
+}

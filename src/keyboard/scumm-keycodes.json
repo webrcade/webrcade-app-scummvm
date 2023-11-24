@@ -1,0 +1,476 @@
+{
+  "0": {
+    "code": 48,
+    "ascii": 48
+  },
+  "1": {
+    "code": 49,
+    "ascii": 49
+  },
+  "2": {
+    "code": 50,
+    "ascii": 50
+  },
+  "3": {
+    "code": 51,
+    "ascii": 51
+  },
+  "4": {
+    "code": 52,
+    "ascii": 52
+  },
+  "5": {
+    "code": 53,
+    "ascii": 53
+  },
+  "6": {
+    "code": 54,
+    "ascii": 54
+  },
+  "7": {
+    "code": 55,
+    "ascii": 55
+  },
+  "8": {
+    "code": 56,
+    "ascii": 56
+  },
+  "9": {
+    "code": 57,
+    "ascii": 57
+  },
+  "esc": {
+    "code": 27,
+    "ascii": 27
+  },
+  "f1": {
+    "code": 282,
+    "ascii": 315
+  },
+  "f2": {
+    "code": 283,
+    "ascii": 316
+  },
+  "f3": {
+    "code": 284,
+    "ascii": 317
+  },
+  "f4": {
+    "code": 285,
+    "ascii": 318
+  },
+  "f5": {
+    "code": 286,
+    "ascii": 319
+  },
+  "f6": {
+    "code": 287,
+    "ascii": 320
+  },
+  "f7": {
+    "code": 288,
+    "ascii": 321
+  },
+  "f8": {
+    "code": 289,
+    "ascii": 322
+  },
+  "f9": {
+    "code": 290,
+    "ascii": 323
+  },
+  "f10": {
+    "code": 291,
+    "ascii": 324
+  },
+  "f11": {
+    "code": 292,
+    "ascii": 325
+  },
+  "f12": {
+    "code": 293,
+    "ascii": 326
+  },
+  "del": {
+    "code": 127,
+    "ascii": 0
+  },
+  "backspace": {
+    "code": 8,
+    "ascii": 8
+  },
+  "enter": {
+    "code": 13,
+    "ascii": 13
+  },
+  "|": {
+    "code": 124,
+    "ascii": 124
+  },
+  "-": {
+    "code": 45,
+    "ascii": 45
+  },
+  "=": {
+    "code": 61,
+    "ascii": 61
+  },
+  "[": {
+    "code": 91,
+    "ascii": 91
+  },
+  "]": {
+    "code": 93,
+    "ascii": 93
+  },
+  "#": {
+    "code": 35,
+    "ascii": 35
+  },
+  ";": {
+    "code": 59,
+    "ascii": 59
+  },
+  "'": {
+    "code": 39,
+    "ascii": 39
+  },
+  ",": {
+    "code": 44,
+    "ascii": 44
+  },
+  ".": {
+    "code": 46,
+    "ascii": 46
+  },
+  "/": {
+    "code": 47,
+    "ascii": 47
+  },
+  "space": {
+    "code": 32,
+    "ascii": 32
+  },
+  "tab": {
+    "code": 9,
+    "ascii": 9
+  },
+  "a": {
+    "code": 97,
+    "ascii": 97
+  },
+  "b": {
+    "code": 98,
+    "ascii": 98
+  },
+  "c": {
+    "code": 99,
+    "ascii": 99
+  },
+  "d": {
+    "code": 100,
+    "ascii": 100
+  },
+  "e": {
+    "code": 101,
+    "ascii": 101
+  },
+  "f": {
+    "code": 102,
+    "ascii": 102
+  },
+  "g": {
+    "code": 103,
+    "ascii": 103
+  },
+  "h": {
+    "code": 104,
+    "ascii": 104
+  },
+  "i": {
+    "code": 105,
+    "ascii": 105
+  },
+  "j": {
+    "code": 106,
+    "ascii": 106
+  },
+  "k": {
+    "code": 107,
+    "ascii": 107
+  },
+  "l": {
+    "code": 108,
+    "ascii": 108
+  },
+  "m": {
+    "code": 109,
+    "ascii": 109
+  },
+  "n": {
+    "code": 110,
+    "ascii": 110
+  },
+  "o": {
+    "code": 111,
+    "ascii": 111
+  },
+  "p": {
+    "code": 112,
+    "ascii": 112
+  },
+  "q": {
+    "code": 113,
+    "ascii": 113
+  },
+  "r": {
+    "code": 114,
+    "ascii": 114
+  },
+  "s": {
+    "code": 115,
+    "ascii": 115
+  },
+  "t": {
+    "code": 116,
+    "ascii": 116
+  },
+  "u": {
+    "code": 117,
+    "ascii": 117
+  },
+  "v": {
+    "code": 118,
+    "ascii": 118
+  },
+  "w": {
+    "code": 119,
+    "ascii": 119
+  },
+  "x": {
+    "code": 120,
+    "ascii": 120
+  },
+  "y": {
+    "code": 121,
+    "ascii": 121
+  },
+  "z": {
+    "code": 122,
+    "ascii": 122
+  },
+  "A": {
+    "code": 97,
+    "ascii": 65,
+    "mods": "shift"
+  },
+  "B": {
+    "code": 98,
+    "ascii": 66,
+    "mods": "shift"
+  },
+  "C": {
+    "code": 99,
+    "ascii": 67,
+    "mods": "shift"
+  },
+  "D": {
+    "code": 100,
+    "ascii": 68,
+    "mods": "shift"
+  },
+  "E": {
+    "code": 101,
+    "ascii": 69,
+    "mods": "shift"
+  },
+  "F": {
+    "code": 102,
+    "ascii": 70,
+    "mods": "shift"
+  },
+  "G": {
+    "code": 103,
+    "ascii": 71,
+    "mods": "shift"
+  },
+  "H": {
+    "code": 104,
+    "ascii": 72,
+    "mods": "shift"
+  },
+  "I": {
+    "code": 105,
+    "ascii": 73,
+    "mods": "shift"
+  },
+  "J": {
+    "code": 106,
+    "ascii": 74,
+    "mods": "shift"
+  },
+  "K": {
+    "code": 107,
+    "ascii": 75,
+    "mods": "shift"
+  },
+  "L": {
+    "code": 108,
+    "ascii": 76,
+    "mods": "shift"
+  },
+  "M": {
+    "code": 109,
+    "ascii": 77,
+    "mods": "shift"
+  },
+  "N": {
+    "code": 110,
+    "ascii": 78,
+    "mods": "shift"
+  },
+  "O": {
+    "code": 111,
+    "ascii": 79,
+    "mods": "shift"
+  },
+  "P": {
+    "code": 112,
+    "ascii": 80,
+    "mods": "shift"
+  },
+  "Q": {
+    "code": 113,
+    "ascii": 81,
+    "mods": "shift"
+  },
+  "R": {
+    "code": 114,
+    "ascii": 82,
+    "mods": "shift"
+  },
+  "S": {
+    "code": 115,
+    "ascii": 83,
+    "mods": "shift"
+  },
+  "T": {
+    "code": 116,
+    "ascii": 84,
+    "mods": "shift"
+  },
+  "U": {
+    "code": 117,
+    "ascii": 85,
+    "mods": "shift"
+  },
+  "V": {
+    "code": 118,
+    "ascii": 86,
+    "mods": "shift"
+  },
+  "W": {
+    "code": 119,
+    "ascii": 87,
+    "mods": "shift"
+  },
+  "X": {
+    "code": 120,
+    "ascii": 88,
+    "mods": "shift"
+  },
+  "Y": {
+    "code": 121,
+    "ascii": 89,
+    "mods": "shift"
+  },
+  "Z": {
+    "code": 122,
+    "ascii": 90,
+    "mods": "shift"
+  },
+  "quote": {
+    "code": 34,
+    "ascii": 34
+  },
+  "£": {
+    "code": 163,
+    "ascii": 163
+  },
+  "$": {
+    "code": 36,
+    "ascii": 36
+  },
+  "%": {
+    "code": 37,
+    "ascii": 37
+  },
+  "^": {
+    "code": 94,
+    "ascii": 94
+  },
+  "&": {
+    "code": 38,
+    "ascii": 38
+  },
+  "*": {
+    "code": 42,
+    "ascii": 42
+  },
+  "(": {
+    "code": 40,
+    "ascii": 40
+  },
+  ")": {
+    "code": 41,
+    "ascii": 41
+  },
+  "_": {
+    "code": 95,
+    "ascii": 95
+  },
+  "+": {
+    "code": 43,
+    "ascii": 43
+  },
+  "¬": {
+    "code": 172,
+    "ascii": 172
+  },
+  "!": {
+    "code": 33,
+    "ascii": 33
+  },
+  "{": {
+    "code": 123,
+    "ascii": 123
+  },
+  "}": {
+    "code": 125,
+    "ascii": 125
+  },
+  "~": {
+    "code": 126,
+    "ascii": 126
+  },
+  ":": {
+    "code": 58,
+    "ascii": 58
+  },
+  "@": {
+    "code": 64,
+    "ascii": 64
+  },
+  "<": {
+    "code": 60,
+    "ascii": 60
+  },
+  ">": {
+    "code": 62,
+    "ascii": 62
+  },
+  "?": {
+    "code": 63,
+    "ascii": 63
+  }
+}

@@ -24,6 +24,7 @@ export class Emulator extends AppWrapper {
     this.bytes = null;
     this.threed = false;
     this.touchEvent = false;
+    this.mouseEvent = false;
     this.touchEnabled = false;
     this.touchEventCount = 0;
     this.mouseEventCount = 0;
@@ -35,6 +36,14 @@ export class Emulator extends AppWrapper {
     this.prompt = false;
 
     this.prefs = new Prefs(this);
+
+    // const debugOut = (content) => {
+    //   const el = window.document.getElementById("debugOutput");
+    //   if (el) {
+    //     el.innerHTML = content + "<br>" + el.innerHTML;
+    //   }
+    // }
+    // window.debugOut = debugOut;
   }
 
   isTouchEvent() {
@@ -85,7 +94,9 @@ export class Emulator extends AppWrapper {
     const Module = window.Module;
     if (!this.firstTouch) {
       this.firstTouch = true;
-      Module._emSetTouchpadMouseMode(this.prefs.getTouchpadMouseMode());
+      setTimeout(() => {
+        Module._emSetTouchpadMouseMode(this.prefs.getTouchpadMouseMode());
+      }, 1000);
     }
 
     this.touchEventCount++;
@@ -95,6 +106,18 @@ export class Emulator extends AppWrapper {
   }
 
   onMouseEvent() {
+    const controls = this.prefs.getScreenControls();
+
+    if (!this.mouseEvent) {
+      if (controls === SCREEN_CONTROLS.SC_AUTO) {
+        setTimeout(() => {
+          this.showTouchOverlay(true);
+          this.app.forceRefresh();
+        }, 0);
+      }
+      this.mouseEvent = true;
+    }
+
     this.mouseEventCount++;
   }
 
@@ -126,9 +149,11 @@ export class Emulator extends AppWrapper {
   onArchiveFilesFinished() { }
 
   onPause(p) {
+    const { app } = this;
     const Module = window.Module;
     if (p) {
       try {
+        app.setKeyboardShown(false);
         Module._emPause();
       } catch (e) {}
     } else {
@@ -214,7 +239,8 @@ export class Emulator extends AppWrapper {
       const setupHTTPFilesystem = async (e) => {
         const FS = window.FS;
         FS.mkdir("/" + e)
-        FS.mount(new ScummvmFS(FS, "js/" + e), {}, "/" + e + "/")
+        const scummFs = new ScummvmFS(FS, "js/" + e);
+        FS.mount(scummFs, {}, "/" + e + "/")
       }
 
       const setupFilesystem = async (e) => {
@@ -229,8 +255,6 @@ export class Emulator extends AppWrapper {
             throw new Error('The size is invalid (0 bytes).');
           }
 
-          // "gfx_mode=2x\n" +               // OpenGL opengl
-
           // Write init file for ScummVM
           let contents = (
             "[scummvm]\n" +
@@ -243,29 +267,51 @@ export class Emulator extends AppWrapper {
             "vkeybd_pack_name=vkeybd_default\n" +
             "savepath=/saves\n" +
             "themepath=/data/\n" +
-            // "gfx_mode=1x\n" +               // OpenGL opengl
+            // "gfx_mode=1x\n" +
+            // "gfx_mode=2x\n" +
             "monosize=22\n" +  // Text adventure text size (mono fonts)
             "propsize=18\n" +  // Standard fonts
             "autosave_period=0\n" +     // Disable auto save
-            "enable_unsupported_game_warning=true\n" + // TODO: Show WRC message
-            "[keymapper]\n" +
-            "keymap_global_VIRT=C+F7\n"
+            "enable_unsupported_game_warning=true\n" // TODO: Show WRC message
           )
 
-          // Write the predictive dictionary
-          try {
-            const response = await fetch("pred.dic");
-            const dictionary = await response.text();
-            FS.writeFile("/pred.dic", dictionary);
-          } catch (e) {
-            LOG.error(e);
+          if (this.is3d()) {
+            contents += "gfx_mode=opengl\n"; // OpenGL
           }
 
-          if (this.is3d()) {
-            contents += "gfx_mode=opengl\n"; // OpenGL opengl
-          }
+          contents += (
+            "[keymapper]\n" +
+            "keymap_global_VIRT=C+F7\n"
+          );
 
           FS.writeFile("/scummvm.ini", contents);
+
+          // Write the predictive dictionary
+          // try {
+          //   const response = await fetch("pred.dic");
+          //   const dictionary = await response.text();
+          //   FS.writeFile("/pred.dic", dictionary);
+          // } catch (e) {
+          //   LOG.error(e);
+          // }
+
+          const cacheList = [
+              "/data/gui-icons.dat",
+              "/data/fonts.dat",
+              "/data/residualvm.zip",
+              "/data/scummclassic.zip",
+              "/data/scummmodern.zip",
+              "/data/scummremastered.zip",
+              "/data/vkeybd_small.zip",
+          ]
+
+          var buf = new Uint8Array(2);
+          for (let i = 0; i < cacheList.length; i++) {
+            const cf = cacheList[i];
+            const stream = FS.open(cf);
+            FS.read(stream, buf, 0, 2, 0);
+            FS.close(stream);
+          }
 
           // Extract the archive
           let size = 0;
@@ -466,8 +512,7 @@ export class Emulator extends AppWrapper {
         controllers
           .waitUntilControlReleased(0, CIDS.SELECT)
             .then(() => {
-              LOG.info('show keyboard')
-              window.Module._emKeyboard()
+              this.toggleKeyboard();
               this.selectDown = false;
             });
       }
@@ -483,7 +528,7 @@ export class Emulator extends AppWrapper {
     } else if (controls === SCREEN_CONTROLS.SC_AUTO) {
       if (!initial) {
         setTimeout(() => {
-          this.showTouchOverlay(this.touchEvent);
+          this.showTouchOverlay(this.touchEvent || this.mouseEvent);
           this.app.forceRefresh();
         }, 0);
       }
@@ -548,8 +593,35 @@ export class Emulator extends AppWrapper {
     }
   }
 
-  async onStart(canvas) {
+  updateVkTransparency() {
+    const value = this.prefs.getVkTransparency();
+    this.app.setKeyboardTransparency(value);
+  }
 
+  updateVkCloseOnEnter() {
+    const value = this.prefs.getVkCloseOnEnter();
+    this.app.setKeyboardCloseOnEnter(value);
+  }
+
+  updateCanvasCursor() {
+    const value = this.prefs.getSystemCursor();
+    if (value) {
+      this.canvas.classList.remove("canvas-no-cursor");
+    } else {
+      this.canvas.classList.add("canvas-no-cursor");
+    }
+  }
+
+  toggleKeyboard() {
+    const { app } = this;
+    // console.log('toggle keyboard');
+
+    const show = !app.isKeyboardShown();
+    app.setKeyboardShown(show);
+    //window.Module._emKeyboard()
+  }
+
+  async onStart(canvas) {
     this.canvas = canvas;
     LOG.info("## onstart.");
 
@@ -590,6 +662,28 @@ export class Emulator extends AppWrapper {
       this.startTime = Date.now();
       canvas.style.display = 'block';
 
+      // window.addEventListener("touchstart", (e) => {
+      //   const clientX = e.touches[0].clientX;
+      //   const clientY = e.touches[0].clientY;
+      //   debugOut("touchstart " + clientX + ", " + clientY);
+      // })
+
+      // window.addEventListener("touchmove", (e) => {
+      //   const clientX = e.touches[0].clientX;
+      //   const clientY = e.touches[0].clientY;
+      //   debugOut("touchmove " + clientX + ", " + clientY);
+      // })
+
+      // canvas.addEventListener("touchend", (e) => {
+      //   // const clientX = e.touches[0].clientX;
+      //   // const clientY = e.touches[0].clientY;
+      //   debugOut("touchend");
+      // })
+
+      // canvas.addEventListener("mousemove", (e) => {
+      //   debugOut("mousemove");
+      // })
+
       const onTouch = () => { this.onTouchEvent() };
       window.addEventListener("touchstart", onTouch);
       window.addEventListener("touchend", onTouch);
@@ -609,6 +703,11 @@ export class Emulator extends AppWrapper {
 
       // Enable bilinear filter
       window.Module._emSetFilterEnabled(true);
+
+      // Prefs
+      this.updateVkTransparency();
+      this.updateCanvasCursor();
+      this.updateVkCloseOnEnter();
 
       try {
         // Hack to fix issue where screen is not sized correctly on initial load
