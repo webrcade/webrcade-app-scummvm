@@ -17,6 +17,8 @@ export class Emulator extends AppWrapper {
 
   SAVE_NAME = "sav";
   SAVES_DIR = "/saves";
+  SCUMMVM_INI = "/scummvm.ini";
+  SCUMMVM_INI_NO_SLASH = "scummvm.ini";
 
   constructor(app, debug = false) {
     super(app, debug);
@@ -34,6 +36,7 @@ export class Emulator extends AppWrapper {
     this.afterCompatCheck = false;
     this.preRunSet = false;
     this.prompt = false;
+    this.gameIniSettings = null;
 
     this.prefs = new Prefs(this);
 
@@ -173,6 +176,11 @@ export class Emulator extends AppWrapper {
     }
   }
 
+  async onConfigUpdated() {
+    if (!this.started) return;
+    await this.saveState();
+  }
+
   async onSaveGame(fileName) {
     const { FS, Module } = window;
 
@@ -255,37 +263,6 @@ export class Emulator extends AppWrapper {
             throw new Error('The size is invalid (0 bytes).');
           }
 
-          // Write init file for ScummVM
-          let contents = (
-            "[scummvm]\n" +
-            "joystick_deadzone=10\n" +
-            "aspect_ratio=true\n" +
-            "renderer=software\n" +
-            "pluginspath=/plugins\n" +      // Plugins path
-            "vkeybdpath=/data\n" +
-            "originalsaveload=true\n" +
-            "vkeybd_pack_name=vkeybd_default\n" +
-            "savepath=/saves\n" +
-            "themepath=/data/\n" +
-            // "gfx_mode=1x\n" +
-            // "gfx_mode=2x\n" +
-            "monosize=22\n" +  // Text adventure text size (mono fonts)
-            "propsize=18\n" +  // Standard fonts
-            "autosave_period=0\n" +     // Disable auto save
-            "enable_unsupported_game_warning=true\n" // TODO: Show WRC message
-          )
-
-          if (this.is3d()) {
-            contents += "gfx_mode=opengl\n"; // OpenGL
-          }
-
-          contents += (
-            "[keymapper]\n" +
-            "keymap_global_VIRT=C+F7\n"
-          );
-
-          FS.writeFile("/scummvm.ini", contents);
-
           // Write the predictive dictionary
           // try {
           //   const response = await fetch("pred.dic");
@@ -294,6 +271,13 @@ export class Emulator extends AppWrapper {
           // } catch (e) {
           //   LOG.error(e);
           // }
+
+          // Make sure we can write to the file system
+          try {
+            FS.writeFile("/test", "test");
+          } catch (e) {
+            LOG.error(e);
+          }
 
           const cacheList = [
               "/data/gui-icons.dat",
@@ -353,6 +337,42 @@ export class Emulator extends AppWrapper {
           this.saveStatePrefix = app.getStoragePath(`${this.uid}/`);
           this.saveStatePath = `${this.saveStatePrefix}${this.SAVE_NAME}`;
           await this.loadState();
+
+          // Write ini file for ScummVM
+          let contents = (
+            "[scummvm]\n" +
+            "joystick_deadzone=10\n" +
+            "aspect_ratio=true\n" +
+            "renderer=software\n" +
+            "pluginspath=/plugins\n" +      // Plugins path
+            "vkeybdpath=/data\n" +
+            "originalsaveload=true\n" +
+            "vkeybd_pack_name=vkeybd_default\n" +
+            "savepath=/saves\n" +
+            "themepath=/data/\n" +
+            // "gfx_mode=1x\n" +
+            // "gfx_mode=2x\n" +
+            "monosize=22\n" +  // Text adventure text size (mono fonts)
+            "propsize=18\n" +  // Standard fonts
+            "autosave_period=0\n" +     // Disable auto save
+            "enable_unsupported_game_warning=true\n" // TODO: Show WRC message
+          )
+
+          if (this.is3d()) {
+            contents += "gfx_mode=opengl\n"; // OpenGL
+          }
+
+          contents += (
+            "[keymapper]\n" +
+            "keymap_global_VIRT=C+F7\n"
+          );
+
+          if (this.gameIniSettings) {
+            contents += this.gameIniSettings;
+          }
+
+          console.log(contents);
+          FS.writeFile(this.SCUMMVM_INI, contents);
 
           if (pause) {
             await this.wait(10000);
@@ -446,6 +466,29 @@ export class Emulator extends AppWrapper {
         }
       }
 
+      try {
+        // ini file
+        const res = FS.analyzePath(this.SCUMMVM_INI, true);
+        if (res.exists) {
+          const s = FS.readFile(this.SCUMMVM_INI);
+          if (s) {
+            const content = new TextDecoder().decode(s);
+            const lines = this.filterGameSettings(content.split("\n"));
+            let out = "";
+            for (let cl = 0; cl < lines.length; cl++) {
+              out += lines[cl] + "\n";
+            }
+            console.log(out);
+            files.push({
+              name: this.SCUMMVM_INI_NO_SLASH,
+              content: new TextEncoder().encode(out),
+            });
+          }
+        }
+      } catch (e) {
+        LOG.error(e);
+      }
+
       const hasChanges = await this.getSaveManager().checkFilesChanged(files);
       if (hasChanges) {
         await this.getSaveManager().save(
@@ -457,6 +500,48 @@ export class Emulator extends AppWrapper {
     } catch (e) {
       LOG.error('Error persisting save state: ' + e);
     }
+  }
+
+  filterGameSettings(lines) {
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (
+        line.indexOf("id_came_from_command_line") !== -1 ||
+        line.indexOf("touchpad_mouse_mode") !== -1
+      ) {
+        continue;
+      }
+      out.push(line);
+    }
+    return out;
+  }
+
+  extractGameSettings(content) {
+    const lines = this.filterGameSettings(content.split("\n"));
+    let gameSettings = null;
+    let inGameBlock = false;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line[0] === '[') {
+        if (line.indexOf("scummvm") !== -1 ||
+            line.indexOf("keymapper") !== -1) {
+            inGameBlock = false;
+            continue;
+        }
+        gameSettings = "\n\n";
+        inGameBlock = true;
+      }
+
+      if (inGameBlock) {
+        // if (line.indexOf("id_came_from_command_line") == -1 &&
+        //   line.indexOf("touchpad_mouse_mode") == -1) {
+        //   gameSettings += line + "\n";
+        // }
+        gameSettings += line + "\n";
+      }
+    }
+    this.gameIniSettings = gameSettings;
   }
 
   async loadState() {
@@ -480,7 +565,12 @@ export class Emulator extends AppWrapper {
         if (f.name === 'info.txt') continue;
         s = f.content;
         if (s) {
-          FS.writeFile(this.SAVES_DIR + "/" + f.name, s);
+          if (f.name === 'scummvm.ini') {
+console.log(new TextDecoder().decode(f.content));
+            this.extractGameSettings(new TextDecoder().decode(f.content));
+          } else {
+            FS.writeFile(this.SAVES_DIR + "/" + f.name, s);
+          }
         }
       }
     } catch (e) {
