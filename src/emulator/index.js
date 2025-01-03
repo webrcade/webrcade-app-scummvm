@@ -37,6 +37,7 @@ export class Emulator extends AppWrapper {
     this.preRunSet = false;
     this.prompt = false;
     this.gameIniSettings = null;
+    this.gamepadVkPending = false;
 
     this.prefs = new Prefs(this);
 
@@ -586,7 +587,23 @@ console.log(new TextDecoder().decode(f.content));
     //       start -> pause (escape)
     //       select -> keyboard
 
+
     if (controllers.isControlDown(0, CIDS.START) || controllers.isControlDown(0, CIDS.ESCAPE)) {
+      if (!this.paused) {
+        if (controllers.isControlDown(0, CIDS.LTRIG) && controllers.isControlDown(0, CIDS.RANALOG)) {
+            if (!this.gamepadVkPending) {
+              this.gamepadVkPending = true;
+              controllers
+              .waitUntilControlReleased(0 /*i*/, CIDS.ESCAPE)
+                .then(() => {
+                  this.gamepadVkPending = false;
+                  this.toggleKeyboard();
+                });
+            }
+            return;
+        }
+      }
+
       if (this.pause(true)) {
         controllers
           .waitUntilControlReleased(0, CIDS.ESCAPE)
