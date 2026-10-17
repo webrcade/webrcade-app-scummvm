@@ -585,25 +585,31 @@ console.log(new TextDecoder().decode(f.content));
     controllers.poll();
 
     //       start -> pause (escape)
+    //       LTRIG+RANALOG -> keyboard
     //       select -> keyboard
 
+    // WRC - used to be nested inside the START||ESCAPE check below, relying
+    // on CIDS.ESCAPE's synthesis including LTRIG+RANALOG - that stopped
+    // being true once CIDS.ESCAPE was narrowed to just LTRIG+LANALOG (see
+    // webrcade-app-common/src/input/controls.js), which made this
+    // unreachable (LTRIG+RANALOG alone never satisfies CIDS.START, which
+    // needs RTRIG+RANALOG, or CIDS.ESCAPE, which needs LTRIG+LANALOG). Now
+    // uses CIDS.WRC_CUSTOM directly, same fix as retro-mame-apple2/apple2gs
+    // and retro-commodore-8bit.
+    if (!this.paused && controllers.isControlDown(0, CIDS.WRC_CUSTOM)) {
+      if (!this.gamepadVkPending) {
+        this.gamepadVkPending = true;
+        controllers
+          .waitUntilControlReleased(0, CIDS.WRC_CUSTOM)
+          .then(() => {
+            this.gamepadVkPending = false;
+            this.toggleKeyboard();
+          });
+      }
+      return;
+    }
 
     if (controllers.isControlDown(0, CIDS.START) || controllers.isControlDown(0, CIDS.ESCAPE)) {
-      if (!this.paused) {
-        if (controllers.isControlDown(0, CIDS.LTRIG) && controllers.isControlDown(0, CIDS.RANALOG)) {
-            if (!this.gamepadVkPending) {
-              this.gamepadVkPending = true;
-              controllers
-              .waitUntilControlReleased(0 /*i*/, CIDS.ESCAPE)
-                .then(() => {
-                  this.gamepadVkPending = false;
-                  this.toggleKeyboard();
-                });
-            }
-            return;
-        }
-      }
-
       if (this.pause(true)) {
         controllers
           .waitUntilControlReleased(0, CIDS.ESCAPE)
